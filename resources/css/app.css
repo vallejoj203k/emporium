@@ -1,0 +1,60 @@
+html, body {
+	height: 100%;
+}
+
+.gym-shell {
+	overflow-x: hidden;
+}
+
+.gym-sidebar {
+	width: 290px;
+	background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+	color: #fff;
+	border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-brand-icon {
+	width: 44px;
+	height: 44px;
+	border-radius: 14px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #22c55e, #16a34a);
+	color: #fff;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+}
+
+.sidebar-nav .sidebar-link {
+	color: rgba(255, 255, 255, 0.82);
+	border-radius: 16px;
+	padding: 0.95rem 1rem;
+	font-weight: 600;
+	font-size: 1rem;
+}
+
+.sidebar-nav .sidebar-link:hover,
+.sidebar-nav .sidebar-link.active {
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+}
+
+.sidebar-logout {
+	border-radius: 16px;
+	border-width: 2px;
+	font-weight: 700;
+}
+
+.main-pane {
+	min-width: 0;
+}
+
+@media (min-width: 992px) {
+	.gym-sidebar {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+	}
+}
