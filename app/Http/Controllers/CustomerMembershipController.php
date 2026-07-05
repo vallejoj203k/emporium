@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCustomerMembershipRequest;
-use App\Models\Alert;
 use App\Models\Customer;
 use App\Models\CustomerMembership;
 use App\Models\MembershipPlan;
@@ -65,7 +64,7 @@ class CustomerMembershipController extends Controller
 
             Customer::whereKey($validated['customer_id'])->update(['status' => 'active']);
 
-            $this->dispatchMembershipAlerts($membership);
+            $membership->generateExpiryAlerts();
         });
 
         return redirect()->route('customer-memberships.index')->with('success', 'Membresía registrada correctamente.');
@@ -76,56 +75,5 @@ class CustomerMembershipController extends Controller
         $customer_membership->load('customer.documentType', 'plan', 'paymentMethod', 'registeredBy', 'payments.method', 'payments.user');
 
         return view('customer-memberships.show', ['membership' => $customer_membership]);
-    }
-
-    private function dispatchMembershipAlerts(CustomerMembership $membership): void
-    {
-        $today = Carbon::today();
-        $endDate = $membership->end_date->copy();
-
-        if ($endDate->isSameDay($today)) {
-            Alert::firstOrCreate(
-                [
-                    'customer_id' => $membership->customer_id,
-                    'customer_membership_id' => $membership->id,
-                    'type' => 'expires_today',
-                ],
-                [
-                    'message' => 'La membresía vence hoy.',
-                    'generated_at' => now(),
-                    'is_read' => false,
-                ]
-            );
-        }
-
-        if ($endDate->isSameDay($today->copy()->addDays(3))) {
-            Alert::firstOrCreate(
-                [
-                    'customer_id' => $membership->customer_id,
-                    'customer_membership_id' => $membership->id,
-                    'type' => 'expires_in_3_days',
-                ],
-                [
-                    'message' => 'La membresía vence en 3 días.',
-                    'generated_at' => now(),
-                    'is_read' => false,
-                ]
-            );
-        }
-
-        if ($endDate->lt($today)) {
-            Alert::firstOrCreate(
-                [
-                    'customer_id' => $membership->customer_id,
-                    'customer_membership_id' => $membership->id,
-                    'type' => 'expired',
-                ],
-                [
-                    'message' => 'La membresía ya está vencida.',
-                    'generated_at' => now(),
-                    'is_read' => false,
-                ]
-            );
-        }
     }
 }

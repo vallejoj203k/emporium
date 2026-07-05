@@ -26,6 +26,14 @@ class StoreCustomerRequest extends FormRequest
             'registered_at' => ['required', 'date'],
             'status' => ['required', 'in:active,suspended,expired'],
             'observations' => ['nullable', 'string'],
+
+            // Membresía inicial opcional: si se elige un plan, los demás campos se vuelven obligatorios.
+            'membership_plan_id' => ['nullable', 'exists:membership_plans,id'],
+            'payment_method_id' => ['nullable', 'required_with:membership_plan_id', 'exists:payment_methods,id'],
+            'start_date' => ['nullable', 'required_with:membership_plan_id', 'date'],
+            'paid_amount' => ['nullable', 'required_with:membership_plan_id', 'numeric', 'min:0'],
+            'receipt_number' => ['nullable', 'string', 'max:80', 'unique:payments,receipt_number'],
+            'membership_observations' => ['nullable', 'string'],
         ];
     }
 }
