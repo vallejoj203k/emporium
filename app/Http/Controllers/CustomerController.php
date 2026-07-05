@@ -5,8 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\CustomerMembership;
 use App\Models\DocumentType;
+use App\Models\MembershipPlan;
+use App\Models\Payment;
+use App\Models\PaymentMethod;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -39,17 +45,71 @@ class CustomerController extends Controller
     public function create()
     {
         $documentTypes = DocumentType::where('is_active', true)->orderBy('name')->get();
+        $plans = MembershipPlan::where('is_active', true)->orderBy('duration_days')->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('name')->get();
 
-        return view('customers.create', compact('documentTypes'));
+        return view('customers.create', compact('documentTypes', 'plans', 'paymentMethods'));
     }
 
     public function store(StoreCustomerRequest $request)
     {
-        Customer::create($request->validated() + [
-            'created_by' => $request->user()->id,
-        ]);
+        $validated = $request->validated();
 
-        return redirect()->route('customers.index')->with('success', 'Cliente registrado correctamente.');
+        DB::transaction(function () use ($request, $validated) {
+            $customer = Customer::create(collect($validated)->only([
+                'document_type_id',
+                'first_name',
+                'last_name',
+                'document_number',
+                'birth_date',
+                'gender',
+                'phone',
+                'emergency_contact_name',
+                'emergency_contact_phone',
+                'registered_at',
+                'status',
+                'observations',
+            ])->all() + [
+                'created_by' => $request->user()->id,
+            ]);
+
+            if (! empty($validated['membership_plan_id'])) {
+                $plan = MembershipPlan::findOrFail($validated['membership_plan_id']);
+                $startDate = Carbon::parse($validated['start_date']);
+                $endDate = $startDate->copy()->addDays(max($plan->duration_days - 1, 0));
+
+                $membership = CustomerMembership::create([
+                    'customer_id' => $customer->id,
+                    'membership_plan_id' => $plan->id,
+                    'payment_method_id' => $validated['payment_method_id'],
+                    'registered_by' => $request->user()->id,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'paid_amount' => $validated['paid_amount'],
+                    'status' => 'active',
+                    'observations' => $validated['membership_observations'] ?? null,
+                ]);
+
+                Payment::create([
+                    'customer_id' => $customer->id,
+                    'customer_membership_id' => $membership->id,
+                    'payment_method_id' => $validated['payment_method_id'],
+                    'registered_by' => $request->user()->id,
+                    'amount' => $validated['paid_amount'],
+                    'payment_date' => $startDate,
+                    'receipt_number' => $validated['receipt_number'] ?? null,
+                    'observations' => $validated['membership_observations'] ?? null,
+                ]);
+
+                $membership->generateExpiryAlerts();
+            }
+        });
+
+        $message = ! empty($validated['membership_plan_id'])
+            ? 'Cliente registrado con su membresía y pago correctamente.'
+            : 'Cliente registrado correctamente.';
+
+        return redirect()->route('customers.index')->with('success', $message);
     }
 
     public function show(Customer $customer)

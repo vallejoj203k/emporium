@@ -27,6 +27,11 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
 
 EXPOSE 8080
 
-# Migra la base de datos, carga datos iniciales (admin + catálogos) y arranca el servidor
-CMD php artisan migrate --force --seed \
-    && php artisan serve --host 0.0.0.0 --port ${PORT:-8080}
+# Espera a que la base de datos esté lista, migra, carga datos iniciales
+# (admin + catálogos) y arranca el servidor.
+CMD for i in 1 2 3 4 5 6 7 8 9 10; do \
+        php artisan migrate --force --seed && break; \
+        echo "Base de datos no lista, reintentando en 5s... (intento $i)"; \
+        sleep 5; \
+    done; \
+    php artisan serve --host 0.0.0.0 --port ${PORT:-8080}
